@@ -1,0 +1,1 @@
+add_library(history history.cpp history.h)
