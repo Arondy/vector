@@ -2,7 +2,7 @@
 
 #include <catch2/catch.hpp>
 #include "../vector/vector.h"
-#include "../buffer.h"
+#include "buffer.h"
 
 using std::string, std::shared_ptr, std::make_shared;
 using MyVec::vector, MyVec::VectorIterator;
