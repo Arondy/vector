@@ -1,4 +1,4 @@
-# Vector implementation (with iterator)
+# Vector implementation in C++ (with iterator)
 Raw memory allocation and deallocation, placement new are used for correct operations with complex classes working with memory.
 ## Following methods are implemented:
 - size()
