@@ -12,11 +12,11 @@ namespace MyVec {
     private:
         T *ptr;
     public:
-        typedef std::random_access_iterator_tag iterator_category;
-        typedef T value_type;
-        typedef std::ptrdiff_t difference_type;
-        typedef std::conditional_t<is_const, const T, T> *pointer;
-        typedef std::conditional_t<is_const, const T, T> &reference;
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using pointer = T *;
+        using reference = T &;
 
         VectorIterator() noexcept: ptr{nullptr}{};
         explicit VectorIterator(T *p) : ptr(p){}
@@ -102,113 +102,130 @@ namespace MyVec {
         bool operator!=(const VectorIterator &other) const{ return !(*this == other); }
     };
 
-
     static_assert(std::random_access_iterator<VectorIterator<std::size_t, false>>);
     static_assert(std::random_access_iterator<VectorIterator<std::size_t, true>>);
 
     template <typename T>
     class vector {
-//        typedef VectorIterator<T, false> iterator;
-//        typedef VectorIterator<T, true> const_iterator;
+        using iterator = VectorIterator<T, false>;
+        using const_iterator = VectorIterator<T, true>;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using pointer = T *;
+        using reference = T &;
+        using const_reference = const T &;
+        using size_type = std::size_t;
     private:
-        std::size_t size_ = 0;
-        std::size_t capacity = 0;
+        size_type _size = 0;
+        size_type _capacity = 0;
         T *array = nullptr;
+        void erase_till_end(iterator pos) noexcept;
+        void swap(vector &second) noexcept;
     public:
-        vector() = default;
-        explicit vector(std::size_t capacity);
-        explicit vector(std::size_t size, T el);
-        vector(std::initializer_list<T> list);
-        vector(const vector &second);
+        vector() noexcept(std::is_nothrow_default_constructible_v<T>) = default;
+        explicit vector(size_type capacity) requires std::copy_constructible<T>;
+        explicit vector(size_type size, const T &el) requires std::copy_constructible<T>;
+        vector(std::initializer_list<T> list) requires std::move_constructible<T>;
+        vector(const vector &second) requires std::copy_constructible<T>;
         vector(vector &&second) noexcept;
-        vector &operator=(const vector &second);
-//        vector &operator=(const T &element); //?
+
+        vector &operator=(const vector &second) requires std::copy_constructible<T>;
         vector &operator=(vector &&second) noexcept;
-        [[nodiscard]] std::size_t size() const{ return size_; };
-        [[nodiscard]] bool empty() const{ return size_ == 0; };
-        [[nodiscard]] T &operator[](std::size_t index){ return array[index]; };
-        [[nodiscard]] const T &operator[](std::size_t index) const{ return array[index]; };
-        void reserve(std::size_t newCap);
-        [[nodiscard]] const T &at(std::size_t index) const;
-        [[nodiscard]] T &back() const{ return array[size_ - 1]; };
-        void push_back(T element);
+        vector &operator=(std::initializer_list<T> list) requires std::move_constructible<T>;
+        [[nodiscard]] T &operator[](size_type index){ return array[index]; };
+        [[nodiscard]] const T &operator[](size_type index) const{ return array[index]; };
+
+        [[nodiscard]] size_type size() const noexcept{ return _size; };
+        [[nodiscard]] size_type capacity() const noexcept{ return _capacity; };
+        [[nodiscard]] bool empty() const noexcept{ return _size == 0; };
+        void reserve(size_type newCap);
+        [[nodiscard]] const T &at(size_type index) const;
+        [[nodiscard]] T &at(size_type index);
+        [[nodiscard]] const T &front() const{ return array[0]; };
+        [[nodiscard]] T &front(){ return array[0]; };
+        [[nodiscard]] const T &back() const{ return array[_size - 1]; };
+        [[nodiscard]] T &back(){ return array[_size - 1]; };
+        [[nodiscard]] const T *data() const{ return array; };
+        [[nodiscard]] T *data(){ return array; };
+        void push_back(const T &element) requires std::copy_constructible<T>;
+        void push_back(T &&element) requires std::move_constructible<T>;
         template <typename ...Args>
-        void emplace_back(Args &&... args);
+        void emplace_back(Args &&... args) requires std::constructible_from<T, Args...>;
+        void clear() noexcept;
         ~vector();
 
-//        iterator begin(){ return iterator(array); }
-//        iterator end(){ return iterator(array + size_); }
-//        const_iterator begin() const{ return const_iterator(array); }
-//        const_iterator end() const{ return const_iterator(array + size_); }
+        iterator begin() noexcept{ return iterator(array); }
+        iterator end() noexcept{ return iterator(array + _size); }
+        const_iterator begin() const noexcept{ return const_iterator(array); }
+        const_iterator end() const noexcept{ return const_iterator(array + _size); }
+        const_iterator cbegin() const noexcept{ return const_iterator(array); }
+        const_iterator cend() const noexcept{ return const_iterator(array + _size); }
 
-//        iterator find(const T &value) const;
-        void clear() noexcept;
-//        VectorIterator<T, false> erase(iterator it);
-//        VectorIterator<T, false> erase(iterator begin, iterator end);
+        iterator erase(iterator it) noexcept;
+        iterator erase(iterator first, iterator last) noexcept;
     };
 }
 
 namespace MyVec {
     template <typename T>
-    vector<T>::vector(std::size_t capacity){
+    using iterator = VectorIterator<T, false>;
+    template <typename T>
+    using const_iterator = VectorIterator<T, true>;
+
+    template <typename T>
+    vector<T>::vector(size_type capacity) requires std::copy_constructible<T>{
         reserve(capacity);
-        size_ = capacity;
-        for (int i = 0; i < size_; i++){
-            array[i] = T{};
+        for (size_type i = 0; i < capacity; i++){
+            new(&array[i]) T();
         }
+        _size = capacity;
     }
 
     template <typename T>
-    vector<T>::vector(std::size_t size, T el){
+    vector<T>::vector(size_type size, const T &el) requires std::copy_constructible<T>{
         reserve(size);
-        for (int i = 0; i < size; i++){
-            array[i] = el;
+        for (size_type i = 0; i < size; i++){
+            new(&array[i]) T(el);
         }
-        size_ = size;
+        _size = size;
     }
 
     template <typename T>
-    vector<T>::vector(std::initializer_list<T> list){
+    vector<T>::vector(std::initializer_list<T> list) requires std::move_constructible<T>{
         reserve(list.size());
 
-        int i = 0;
+        size_type i = 0;
         for (const T &element: list){
-            array[i++] = element;
+            new(&array[i++]) T(element);
         }
-        size_ = list.size();
+        _size = list.size();
     }
 
     template <typename T>
-    vector<T>::vector(const vector &second){
+    vector<T>::vector(const vector &second) requires std::copy_constructible<T>{
         reserve(second.size());
 
-        int i = 0;
-        for (i = 0; i < second.size_; i++){
-            array[i] = second.array[i];
+        for (size_type i = 0; i < second._size; i++){
+            new(&array[i]) T(second.array[i]);
         }
-//        for (const T &element: second){
-//            array[i++] = element;
-//        }
-        size_ = second.size();
+        _size = second.size();
     }
 
     template <typename T>
     vector<T>::vector(vector &&second) noexcept{
-        std::swap(array, second.array);
-        std::swap(size_, second.size_);
-        std::swap(capacity, second.capacity);
+        swap(second);
     }
 
     template <typename T>
-    vector<T> &vector<T>::operator=(const vector<T> &second){
+    vector<T> &vector<T>::operator=(const vector<T> &second) requires std::copy_constructible<T>{
         if (this != &second){
             clear();
-            reserve(second.capacity);
+            reserve(second._capacity);
 
-            for (int i = 0; i < second.size_; i++){
-                array[i] = second[i];
+            for (size_type i = 0; i < second._size; i++){
+                new(&array[i]) T(second.array[i]);
             }
-            size_ = second.size_;
+            _size = second._size;
         }
         return *this;
     }
@@ -216,112 +233,141 @@ namespace MyVec {
     template <typename T>
     vector<T> &vector<T>::operator=(vector<T> &&second) noexcept{
         if (this != &second){
-            std::swap(array, second.array);
-            std::swap(size_, second.size_);
-            std::swap(capacity, second.capacity);
+            swap(second);
         }
         return *this;
     }
 
     template <typename T>
-    void vector<T>::reserve(std::size_t newCap){
-        try {
-            if (newCap == 0){
-                newCap = 1;
-            } else if (newCap < capacity){
-                return;
-            }
+    vector<T> &vector<T>::operator=(std::initializer_list<T> list) requires std::move_constructible<T>{
+        reserve(list.size());
 
-            T *buffer = new T[newCap];
-            for (int i = 0; i < size_; i++){
-                buffer[i] = std::move(array[i]);
-            }
-            std::swap(array, buffer);
-            capacity = newCap;
-            delete[] buffer;
-        } catch (const std::exception &e){
-            cout << e.what() << endl;
+        size_type i = 0;
+        for (const T &element: list){
+            new(&array[i++]) T(element);
         }
+        _size = list.size();
+        return *this;
     }
 
     template <typename T>
-    const T &vector<T>::at(std::size_t index) const{
-        if (index < 0 || index >= size_){
+    void vector<T>::reserve(size_type newCap){
+        if (newCap == 0){
+            newCap = 1;
+        } else if (newCap < _capacity){
+            return;
+        }
+        size_type temp = _size;
+
+        T *buffer = static_cast<T *>(::operator new(newCap * sizeof(T)));
+        for (size_type i = 0; i < _size; i++){
+            new(&buffer[i]) T(std::move(array[i]));
+        }
+        clear();
+        ::operator delete(array, _capacity * sizeof(T));
+        array = std::move(buffer);
+        _capacity = newCap;
+        _size = temp;
+    }
+
+    template <typename T>
+    const T &vector<T>::at(size_type index) const{
+        if (index >= _size){
             throw std::out_of_range("Index is out of range");
         }
         return array[index];
     }
 
     template <typename T>
-    void vector<T>::push_back(T element){
-        if (size_ == capacity){
-            reserve(capacity * 2);
+    T &vector<T>::at(size_type index){
+        if (index >= _size){
+            throw std::out_of_range("Index is out of range");
         }
-        array[size_++] = element;
+        return array[index];
+    }
+
+    template <typename T>
+    void vector<T>::push_back(const T &element) requires std::copy_constructible<T>{
+        if (_size == _capacity){
+            reserve(_capacity * 2);
+        }
+        new(&array[_size++]) T(std::move(element));
+    }
+
+    template <typename T>
+    void vector<T>::push_back(T &&element) requires std::move_constructible<T>{
+        if (_size == _capacity){
+            reserve(_capacity * 2);
+        }
+        new(&array[_size++]) T(std::move(element));
     }
 
     template <typename T>
     template <typename ...Args>
-    void vector<T>::emplace_back(Args &&... args){
-        if (size_ == capacity){
-            reserve(capacity * 2);
+    void vector<T>::emplace_back(Args &&... args) requires std::constructible_from<T, Args...>{
+        if (_size == _capacity){
+            reserve(_capacity * 2);
         }
-        array[size_++] = T{std::forward<Args>(args)...};
+        new(&array[_size]) T{std::forward<Args>(args)...};
+        _size++;
+    }
+
+    template <typename T>
+    void vector<T>::clear() noexcept{
+        for (int i = 0; i < _size; ++i){
+            array[i].~T();
+        }
+        _size = 0;
     }
 
     template <typename T>
     vector<T>::~vector(){
         clear();
-        delete[] array;
-        array = nullptr;
+        ::operator delete(array, _capacity * sizeof(T));
     }
-
-//    template <typename T>
-//    VectorIterator<T, false> vector<T>::find(const T &value) const{
-//        for (const_iterator it = begin(); it != end(); it++){
-//            if (*it == value){
-//                return it;
-//            }
-//        }
-//        return end();
-//    }
 
     template <typename T>
-    void vector<T>::clear() noexcept{
-        for (int i = 0; i < size_; i++){
-            array[i].~T();
+    iterator<T> vector<T>::erase(iterator it) noexcept{
+        if (it >= end()){
+            return end();
         }
-        size_ = 0;
+
+        if (it + 1 != end()){
+            std::move(it + 1, end(), it);
+        }
+
+        array[--_size].~T();
+        return it;
     }
 
-//    template <typename T>
-//    VectorIterator<T, false> vector<T>::erase(iterator it){
-//        iterator next = it++;
-//
-//        if (it < begin()){
-//            throw std::out_of_range("Can't be before begin()");
-//        } else if (it == end()){
-//            return end();
-//        }
-//
-//        it->~T();
-//
-//        for (iterator i = it; i != end() - 1; i++){
-//            *i = *(i + 1);
-//        }
-//
-//        size_--;
-//        return next;
-//    }
-//
-//    template <typename T>
-//    VectorIterator<T, false> vector<T>::erase(iterator begin, iterator end){
-//        while (begin != end){
-//            begin = erase(begin);
-//            size_--;
-//        }
-//        return end;
-//    }
+    template <typename T>
+    iterator<T> vector<T>::erase(iterator first, iterator last) noexcept{
+        if (first != last){
+            if (last != end()){
+                std::move(last, end(), first);
+            }
+            erase_till_end(first + (end() - last));
+        }
+        return first;
+    }
+
+    template <typename T>
+    void vector<T>::erase_till_end(iterator pos) noexcept{
+        size_type num = end() - pos;
+        if (num){
+            for (iterator it = pos; it != end(); ++it){
+                it->~T();
+            }
+            _size -= num;
+        }
+    }
+
+    template <typename T>
+    void vector<T>::swap(vector &second) noexcept{
+        std::swap(array, second.array);
+        std::swap(_size, second._size);
+        std::swap(_capacity, second._capacity);
+    }
 }
 
 #endif

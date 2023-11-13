@@ -4,9 +4,13 @@ project(myTemplate)
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(vector)
-add_subdirectory(history)
+#add_subdirectory(history)
 set_target_properties(vector PROPERTIES LINKER_LANGUAGE CXX)
+
+if (UNIX)
+    add_subdirectory(tests)
+endif()
 
 add_executable(${PROJECT_NAME} main.cpp)
 
-target_link_libraries(${PROJECT_NAME} vector history)
+target_link_libraries(${PROJECT_NAME} vector)
