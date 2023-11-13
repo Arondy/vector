@@ -1,0 +1,21 @@
+# Vector implementation (with iterator)
+## Following methods are implemented:
+- size()
+- capacity()
+- empty()
+- reserve()
+- at()
+- front()
+- back()
+- data()
+- push_back()
+- emplace_back()
+- clear()
+- erase()
+- begin()
+- end()
+- cbegin()
+- cend()
+- swap()
+
+Iterator realization meets std::random_access_iterator requirements.
